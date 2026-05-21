@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYR - AI Music Experience</title>
+    <link rel="stylesheet" href="/static/style.css?v=2.0">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="logo">
+            <i data-lucide="zap"></i>
+            <span>SYR AI</span>
+        </div>
+        
+        <div class="nav-links">
+            <a href="#" class="nav-item active" id="nav-discover">
+                <i data-lucide="layout-grid"></i>
+                <span>Discover</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-playlists">
+                <i data-lucide="music"></i>
+                <span>Playlists</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-library">
+                <i data-lucide="library"></i>
+                <span>Library</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-direct">
+                <i data-lucide="youtube"></i>
+                <span>YT Search</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-favorites" style="display: none;">
+                <i data-lucide="heart"></i>
+                <span>Favorites</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-downloads-menu">
+                <i data-lucide="download"></i>
+                <span>Downloads</span>
+                <span class="badge" id="queue-badge" style="display: none;">0</span>
+            </a>
+        </div>
+
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 1rem;">
+            <div id="user-info-sidebar" style="display: none; align-items: center; gap: 0.75rem; padding: 0.5rem; background: var(--surface-color); border-radius: 12px;">
+                <div class="avatar" style="width: 32px; height: 32px;">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Music" alt="User">
+                </div>
+                <span style="font-size: 0.85rem; font-weight: 500;" id="user-display-name">Spotify Connected</span>
+            </div>
+            <a href="#" class="nav-item" id="btn-logout" style="display: none;">
+                <i data-lucide="log-out"></i>
+                <span>Disconnect</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <header class="header">
+            <div class="search-bar">
+                <i data-lucide="search" style="color: var(--text-secondary);"></i>
+                <input type="text" id="search-input" placeholder="Search tracks using Local AI Brain...">
+            </div>
+            
+            <div class="user-profile">
+                <span id="header-user-status">Guest</span>
+                <div class="avatar">
+                    <img id="header-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Guest" alt="User">
+                </div>
+            </div>
+        </header>
+
+        <!-- Trạng thái chưa kết nối Spotify -->
+        <section id="login-container" class="center-container">
+            <div class="login-prompt">
+                <div class="glow-logo">
+                    <i data-lucide="music" style="width: 48px; height: 48px; color: var(--accent-color);"></i>
+                </div>
+                <h2>Connect Spotify & Download Free</h2>
+                <p>Đăng nhập tài khoản Spotify để lấy toàn bộ danh sách phát cá nhân của bạn, sau đó tìm kiếm và tải nhạc MP3 320kbps chất lượng cao từ YouTube hoàn toàn miễn phí.</p>
+                <a href="/login" class="login-btn">
+                    <i data-lucide="log-in"></i>
+                    <span>Connect Spotify Account</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Trạng thái đã kết nối Spotify: Danh sách Playlists -->
+        <section id="playlists-section" style="display: none;">
+            <h2 class="section-title">Your Spotify Playlists</h2>
+            <div class="playlist-grid" id="playlist-container">
+                <!-- Playlists sẽ được render ở đây -->
+            </div>
+        </section>
+
+        <!-- Trạng thái Tìm kiếm trực tiếp YouTube -->
+        <section id="direct-search-section" style="display: none;">
+            <h2 class="section-title">Direct YouTube Search & Download</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
+                Nhập tên bài hát hoặc nghệ sĩ bạn muốn tải về máy. Hệ thống sẽ quét trực tiếp trên YouTube và tải nhạc chất lượng cao hoàn toàn miễn phí.
+            </p>
+            <div style="display: flex; gap: 10px; max-width: 600px; margin-bottom: 2rem; background: var(--surface-color); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 0.25rem 0.5rem; align-items: center;">
+                <i data-lucide="youtube" style="color: var(--text-secondary); margin-left: 10px;"></i>
+                <input type="text" id="yt-search-input" placeholder="Nhập tên bài hát hoặc nghệ sĩ..." style="flex: 1; background: transparent; border: none; outline: none; padding: 0.75rem; color: var(--text-primary); font-family: inherit;">
+                <button id="btn-yt-search" style="padding: 0.6rem 1.2rem; border-radius: 8px; background: var(--accent-color); color: #000; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-family: inherit;">
+                    <i data-lucide="search" style="width: 16px; height: 16px;"></i> Search
+                </button>
+            </div>
+            
+            <div class="tracks-list-container">
+                <table class="tracks-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px; text-align: center;">Bìa video</th>
+                            <th>Tên bài hát / Video</th>
+                            <th>Kênh YouTube</th>
+                            <th style="width: 100px; text-align: center;">Thời lượng</th>
+                            <th style="width: 150px; text-align: center;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="yt-search-results-container">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                                <i data-lucide="youtube" style="width: 48px; height: 48px; margin-bottom: 1rem; color: var(--text-secondary); opacity: 0.5;"></i>
+                                <p>Nhập từ khóa tìm kiếm để bắt đầu tải nhạc miễn phí!</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Trạng thái xem kết quả tìm kiếm từ AI -->
+        <section id="search-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 class="section-title">AI Brain Search Results</h2>
+                <button class="back-btn" id="btn-back-from-search" style="margin-bottom: 2rem;">
+                    <i data-lucide="arrow-left"></i> Back
+                </button>
+            </div>
+            <div class="tracks-list-container">
+                <table class="tracks-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px; text-align: center;">Match Score</th>
+                            <th>Title</th>
+                            <th>Album</th>
+                            <th style="width: 150px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="search-results-container">
+                        <!-- Kết quả tìm kiếm AI sẽ được render ở đây -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Trạng thái xem danh sách Tracks của Playlist -->
+        <section id="tracks-section" style="display: none;">
+            <div class="tracks-header">
+                <button class="back-btn" id="btn-back-playlists">
+                    <i data-lucide="arrow-left"></i> Back to Playlists
+                </button>
+                <div class="playlist-detail-card">
+                    <img src="" id="playlist-detail-cover" class="detail-cover" alt="Cover">
+                    <div class="detail-info">
+                        <span class="tag">PLAYLIST</span>
+                        <h1 id="playlist-detail-title">Playlist Name</h1>
+                        <p id="playlist-detail-meta">0 Tracks • By User</p>
+                        <button class="download-all-btn" id="btn-download-all">
+                            <i data-lucide="download-cloud"></i> Download Entire Playlist
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tracks-list-container">
+                <table class="tracks-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Title</th>
+                            <th>Album</th>
+                            <th style="width: 100px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tracks-container">
+                        <!-- Tracks sẽ được render ở đây -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Trạng thái xem danh sách bài hát trong Thư viện cá nhân -->
+        <section id="library-section" style="display: none;">
+            <div class="tracks-header">
+                <div class="playlist-detail-card" style="background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(147, 51, 234, 0.1));">
+                    <div class="detail-cover" style="display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid var(--glass-border); width: 190px; height: 190px;">
+                        <i data-lucide="library" style="width: 64px; height: 64px; color: var(--accent-color);"></i>
+                    </div>
+                    <div class="detail-info">
+                        <span class="tag" style="background: var(--accent-color); color: #000;">LOCAL LIBRARY</span>
+                        <h1 id="library-detail-title">Your Local Collection</h1>
+                        <p id="library-detail-meta">0 Tracks • Offline Ready</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tracks-list-container">
+                <table class="tracks-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Title</th>
+                            <th>Album</th>
+                            <th style="width: 100px; text-align: center;">Play</th>
+                        </tr>
+                    </thead>
+                    <tbody id="library-container">
+                        <!-- Thư viện bài hát sẽ được render ở đây -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Side Panel hiển thị tiến trình tải xuống (Download Panel) -->
+    <div class="download-panel" id="download-panel">
+        <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="download" style="color: var(--accent-color);"></i>
+                <h3>Download Queue</h3>
+            </div>
+            <button class="close-panel-btn" id="btn-close-download-panel">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="queue-list" id="queue-list">
+            <div class="empty-queue" id="empty-queue-msg">
+                <i data-lucide="inbox" style="width: 48px; height: 48px; margin-bottom: 1rem; color: var(--text-secondary);"></i>
+                <p>No active downloads in queue</p>
+            </div>
+            <!-- Các bài hát đang tải sẽ được chèn ở đây -->
+        </div>
+    </div>
+
+    <!-- Trình phát nhạc cục bộ (HTML5 Audio) -->
+    <audio id="main-audio"></audio>
+
+    <!-- Player Bar đáy trang (Spotify Style) -->
+    <div class="player-bar" id="player-bar" style="display: none;">
+    <button id="player-close-btn" class="player-close-btn" title="Close Player"><i data-lucide="x"></i></button>
+    <div class="player-track-info">
+        <img src="" id="player-cover" alt="Cover" class="player-cover">
+        <div class="player-text">
+            <h4 id="player-title">Track Title</h4>
+            <p id="player-artist">Artist Name</p>
+        </div>
+    </div>
+    <div class="player-controls">
+        <div class="control-buttons">
+            <button class="player-btn" id="player-btn-prev" title="Previous Track"><i data-lucide="skip-back"></i></button>
+            <button class="player-btn play-pause-btn" id="player-btn-play" title="Play/Pause"><i data-lucide="play"></i></button>
+            <button class="player-btn" id="player-btn-next" title="Next Track"><i data-lucide="skip-forward"></i></button>
+        </div>
+        <div class="playback-bar">
+            <span id="player-time-current" class="time-label">0:00</span>
+            <div class="progress-container" id="player-progress-container">
+                <div class="progress-fill" id="player-progress-fill"></div>
+            </div>
+            <span id="player-time-total" class="time-label">0:00</span>
+        </div>
+    </div>
+    <div class="player-volume">
+        <button class="player-btn" id="player-btn-mute" title="Mute/Unmute" style="background: transparent; border: none; padding: 0;"><i data-lucide="volume-2" id="volume-icon"></i></button>
+        <div class="volume-container" id="volume-container">
+            <div class="volume-fill" id="volume-fill" style="width: 80%;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Mini Widget Player -->
+<div id="mini-widget-player" class="mini-widget-player" style="display:none;">
+    <div class="mini-info mini-drag-handle">
+        <img id="mini-cover" src="" alt="Cover" class="mini-cover">
+        <div class="mini-text">
+            <h4 id="mini-title">Title</h4>
+            <p id="mini-artist">Artist</p>
+        </div>
+    </div>
+    <div class="mini-controls">
+        <button class="mini-btn" id="mini-prev" title="Previous"><i data-lucide="skip-back"></i></button>
+        <button class="mini-btn" id="mini-play" title="Play/Pause"><i data-lucide="play"></i></button>
+        <button class="mini-btn" id="mini-next" title="Next"><i data-lucide="skip-forward"></i></button>
+        <button class="mini-btn" id="mini-pip" title="Floating PiP"><i data-lucide="external-link"></i></button>
+        <button class="mini-btn" id="mini-hide" title="Minimize"><i data-lucide="minus"></i></button>
+        <button class="mini-btn" id="mini-close" title="Close"><i data-lucide="x"></i></button>
+    </div>
+</div>
+
+<!-- Collapsed Mini FAB (floating action button when widget is minimized) -->
+<div id="mini-fab" class="mini-fab" style="display:none;" title="Expand Player">
+    <img id="mini-fab-cover" src="" alt="Cover" class="mini-fab-cover">
+    <div class="mini-fab-pulse"></div>
+</div>
+
+<video id="pip-video" style="display:none;"></video>
+<canvas id="pip-canvas" width="300" height="168" style="display:none;"></canvas>
+
+
+    <!-- Tải tệp JS dưới dạng Module -->
+    <script type="module" src="/static/js/main.js?v=2.0"></script>
+    <script>
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>

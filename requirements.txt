@@ -1,0 +1,10 @@
+spotipy
+python-dotenv
+requests
+yt-dlp
+mutagen
+sentence-transformers
+chromadb
+typer
+rich
+pytest

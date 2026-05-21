@@ -1,0 +1,16 @@
+{
+  "name": "syr",
+  "version": "1.0.0",
+  "description": "SonicRAG là một dự án CLI chuyên nghiệp giúp bạn tải nhạc từ Spotify với đầy đủ Metadata và ảnh bìa, kết hợp với \"bộ não\" AI chạy cục bộ để gợi ý nhạc.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
