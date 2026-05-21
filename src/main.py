@@ -9,6 +9,8 @@ import webview
 import threading
 import time
 import ctypes
+import sys
+import unicodedata
 from fastapi import FastAPI, Query
 from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,15 +20,24 @@ from core.spotify import SpotifyClient
 app = FastAPI(title="SYR Music AI API")
 sp_client = SpotifyClient()
 
-# Đường dẫn đến thư mục frontend
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend')
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        # Nếu đang chạy bằng file .exe đã đóng gói
+        return os.path.dirname(sys.executable)
+    else:
+        # Nếu đang chạy bằng code Python bình thường
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Serve các file tĩnh của frontend (CSS, JS, các file khác)
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+BASE_DIR = get_base_dir()
 
-# Mount thư mục lưu trữ downloads thành đường dẫn URL tĩnh để Frontend phát nhạc
-DOWNLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'downloads'))
+# --- SỬA LẠI CÁC ĐƯỜNG DẪN DƯỚI ĐÂY ---
+FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
+DOWNLOAD_DIR = os.path.join(BASE_DIR, 'data', 'downloads')
+VECTOR_DB_DIR = os.path.join(BASE_DIR, 'data', 'vector_db') # Đảm bảo vector db cũng nằm ở đây
+
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+os.makedirs(VECTOR_DB_DIR, exist_ok=True)
+icon_path = os.path.join(BASE_DIR, 'avatarapp.ico')
 app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 
 @app.get("/api/yt-suggest")
