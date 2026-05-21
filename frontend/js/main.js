@@ -209,6 +209,66 @@ function setupMiniWidgetInteractivity() {
 }
 
 function init() {
+    const ytInput = document.getElementById('yt-search-input');
+    const suggestBox = document.getElementById('yt-suggest-box');
+    let suggestTimeout = null;
+
+// Lắng nghe sự kiện người dùng gõ phím
+ytInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    
+    // Nếu xóa hết chữ, ẩn hộp gợi ý
+    if (!query) {
+        suggestBox.style.display = 'none';
+        return;
+    }
+
+    // Debounce: Xóa timeout cũ nếu người dùng gõ tiếp
+    clearTimeout(suggestTimeout);
+    
+    // Set timeout mới (đợi 300ms)
+    suggestTimeout = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/yt-suggest?query=${encodeURIComponent(query)}`);
+            const result = await res.json();
+            
+            if (result.status === 'Success' && result.data.length > 0) {
+                suggestBox.innerHTML = ''; // Xóa gợi ý cũ
+                
+                result.data.forEach(text => {
+                    const item = document.createElement('div');
+                    item.textContent = text;
+                    item.style.cssText = 'padding: 0.75rem 1rem; cursor: pointer; color: var(--text-primary); transition: all 0.2s; border-bottom: 1px solid rgba(255,255,255,0.02);';
+                    
+                    // Hover effect
+                    item.addEventListener('mouseenter', () => item.style.background = 'var(--surface-hover)');
+                    item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+                    
+                    // Click vào gợi ý
+                    item.addEventListener('click', () => {
+                        ytInput.value = text;
+                        suggestBox.style.display = 'none';
+                        document.getElementById('btn-yt-search').click(); // Tự động tìm
+                    });
+                    
+                    suggestBox.appendChild(item);
+                });
+                suggestBox.style.display = 'block';
+            } else {
+                suggestBox.style.display = 'none';
+            }
+        } catch (error) {
+            console.error("Lỗi lấy gợi ý:", error);
+        }
+    }, 300); // Đợi 300ms
+});
+
+// Ẩn hộp gợi ý khi click ra ngoài ô input
+document.addEventListener('click', (e) => {
+    if (!ytInput.contains(e.target) && !suggestBox.contains(e.target)) {
+        suggestBox.style.display = 'none';
+    }
+});
     handleTokenAuthentication();
     checkLoginState();
     
