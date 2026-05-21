@@ -26,6 +26,12 @@ function createPlaylistCard(playlist, index) {
     
     const coverUrl = playlist.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop';
     
+    // 1. Tạo ID duy nhất cho thẻ p để dễ dàng cập nhật DOM
+    const metaId = `meta-track-${playlist.id}`;
+    
+    // 2. Nếu API báo 0 bài, hiển thị tạm chữ "Đang đếm..."
+    const initialTrackText = playlist.total_tracks > 0 ? `${playlist.total_tracks} Tracks` : `Đang đếm...`;
+    
     card.innerHTML = `
         <div class="card-img-wrapper">
             <img src="${coverUrl}" alt="${playlist.name}" class="card-img">
@@ -35,12 +41,38 @@ function createPlaylistCard(playlist, index) {
         </div>
         <div class="card-info">
             <h3>${playlist.name}</h3>
-            <p>${playlist.total_tracks} Tracks • By ${playlist.owner}</p>
+            <p id="${metaId}" style="transition: opacity 0.3s ease;">${initialTrackText} • By ${playlist.owner}</p>
         </div>
     `;
     
+    // 3. Xử lý "lỗi 0 track" của Spotify: Gọi API ngầm để đếm số lượng thực tế
+    if (playlist.total_tracks === 0) {
+        const token = localStorage.getItem('spotify_token');
+        fetch(`/api/playlists/${playlist.id}/tracks?token=${token}`)
+            .then(res => res.json())
+            .then(result => {
+                if (result.status === 'Success' && result.data) {
+                    playlist.total_tracks = result.data.length; // Cập nhật lại số chuẩn
+                    
+                    // Render lại số track lên giao diện
+                    const metaEl = document.getElementById(metaId);
+                    if (metaEl) {
+                        metaEl.style.opacity = 0;
+                        setTimeout(() => {
+                            metaEl.textContent = `${playlist.total_tracks} Tracks • By ${playlist.owner}`;
+                            metaEl.style.opacity = 1;
+                        }, 150);
+                    }
+                }
+            })
+            .catch(err => console.error("Lỗi đếm số track:", err));
+    }
+    
     card.addEventListener('click', () => {
-        state.lastActiveSection = 'playlists-section';
+        // Tương thích cho cả ui.js (module) và app.js (file gộp)
+        if (typeof state !== 'undefined') state.lastActiveSection = 'playlists-section';
+        else lastActiveSection = 'playlists-section'; 
+        
         viewPlaylistTracks(playlist);
     });
     

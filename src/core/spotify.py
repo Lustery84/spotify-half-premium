@@ -3,9 +3,25 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 
-# Load các biến môi trường từ file .env trong thư mục config
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', '.env')
-load_dotenv(dotenv_path=env_path)
+# --- ĐOẠN NÀY DÙNG ĐỂ TỰ TÌM ĐƯỜNG DẪN ĐẾN FILE .ENV ---
+def get_env_path():
+    import sys # Gọi sys ở đây để đảm bảo không bị lỗi thiếu thư viện
+    
+    # Kiểm tra nếu đang chạy ở dạng file .exe (frozen)
+    if getattr(sys, 'frozen', False):
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Nếu đang chạy bằng Python bình thường (run.bat)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    # Ưu tiên tìm trong thư mục config, nếu không thấy thì tìm ngay cạnh file chạy
+    config_path = os.path.join(base_dir, 'config', '.env')
+    if os.path.exists(config_path):
+        return config_path
+    return os.path.join(base_dir, '.env')
+
+# Load file .env với đường dẫn đã xác định
+load_dotenv(dotenv_path=get_env_path())
 
 class SpotifyClient:
     def __init__(self):

@@ -4,6 +4,11 @@ import queue
 import threading
 import uuid
 import uvicorn
+import requests 
+import webview
+import threading
+import time
+import ctypes
 from fastapi import FastAPI, Query
 from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,6 +28,25 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 DOWNLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'downloads'))
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
+
+@app.get("/api/yt-suggest")
+def suggest_youtube_keywords(query: str = Query(...)):
+    """Lấy danh sách gợi ý từ khóa tìm kiếm từ YouTube"""
+    try:
+        # Sử dụng API gợi ý công khai của Google (dành cho YouTube)
+        url = f"http://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q={query}"
+        response = requests.get(url, timeout=5)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        # API trả về dạng mảng: ["từ khóa", ["gợi ý 1", "gợi ý 2", ...]]
+        if response.status_code == 200:
+            data = response.json()
+            suggestions = data[1] if len(data) > 1 else []
+            return {"status": "Success", "data": suggestions}
+        return {"status": "Success", "data": []}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
 
 @app.get("/app", response_class=HTMLResponse)
 def serve_frontend():
@@ -186,4 +210,29 @@ def download_track(track_name: str = Query(...), artists: str = Query(...), albu
 
 # Chạy server
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    
+    # --- PHÉP THUẬT 1: ÉP WINDOWS NHẬN DIỆN ĐÂY LÀ APP ĐỘC LẬP ---
+    if os.name == 'nt': # Kiểm tra nếu hệ điều hành là Windows
+        myappid = 'lustery.sonicrag.app.1.0' # Tạo một mã định danh độc quyền cho app của bạn
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    # -------------------------------------------------------------
+
+    def run_server():
+        import uvicorn
+        uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
+    
+    t = threading.Thread(target=run_server)
+    t.daemon = True
+    t.start()
+    
+    time.sleep(1.5)
+    
+    icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'avatarapp.ico'))
+    
+    # Tạo cửa sổ
+    webview.create_window('SonicRAG - AI Music', 'http://127.0.0.1:8000/app', width=1280, height=800)
+
+    if os.path.exists(icon_path):
+        webview.start(icon=icon_path)
+    else:
+        webview.start()
