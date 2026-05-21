@@ -7,7 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from core.spotify import SpotifyClient
 
 def test():
-    token = "BQC00fyBgUF44xLcbgU0p3997U1xVv3jIrlJyzCWoE86eDdUcVDe4XTExbhbE4q-McGWSfxBcRuqHhIBbaHw3-WI0E9kZLfBgbfNHvgz5nZwUXSKqlonFSYpoFrsKYOPVDE9_77LVrmRC3RQpy0S-A1xNph43wef-Z80AewdRs7uUJtt8hrFhKXU3DqHe2FSioe9csFNXdYnUL_RYghJ6hqQv3jSXYhV7UjUTWz2wcDnVFH6uOymreQ3WxGGtnG12mjgT9CPz68WOAKJjOSx"
+    token = "your token here"
     playlist_id = "4MTTrEbJXSIEureNm7ZpJU"
     
     client = SpotifyClient()
