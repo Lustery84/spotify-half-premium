@@ -97,11 +97,18 @@ class YoutubeDownloader:
         """Tìm kiếm các bài hát trên YouTube theo từ khóa và trả về thông tin chi tiết"""
         ydl_opts = {
             'format': 'bestaudio/best',
-            'default_search': f'ytsearch{limit}',
             'quiet': True,
             'no_warnings': True,
-            'extract_flat': True,  # Tránh tải xuống hoặc giải nén sâu, chỉ lấy thông tin sơ bộ cực nhanh
+            'extract_flat': True,  # Tránh tải xuống hoặc giải nén sâu, chỉ lấy thông tin sơ bộ
         }
+        
+        # --- THÊM ĐOẠN NÀY ĐỂ ÉP TÌM KIẾM BẰNG TỪ KHÓA ---
+        # Kiểm tra xem người dùng nhập link hay nhập từ khóa
+        if not query.startswith(("http://", "https://", "www.")):
+            # Nếu là từ khóa, ép yt-dlp phải dùng ytsearch
+            query = f"ytsearch{limit}:{query}"
+        # -----------------------------------------------
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(query, download=False)
             results = []

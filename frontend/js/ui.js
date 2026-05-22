@@ -1,7 +1,7 @@
 import { state, getMiniEl } from './state.js';
 import { createIcons } from './utils.js';
 import { audioPlayer } from './player.js';
-import { fetchPlaylistTracks } from './api.js';
+import { fetchPlaylistTracks, deleteLibraryTrack } from './api.js';
 
 export function renderPlaylists(playlists) {
     const container = document.getElementById('playlist-container');
@@ -475,23 +475,26 @@ export function renderLibraryTracks(tracks) {
         const coverUrl = track.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&h=100&fit=crop';
         
         row.innerHTML = `
-            <td style="text-align: center; color: var(--text-secondary); font-weight: 500;">${index + 1}</td>
-            <td>
-                <div class="track-title-cell">
-                    <img src="${coverUrl}" alt="${track.title}" class="track-thumbnail">
-                    <div class="track-name-info">
-                        <h4>${track.title}</h4>
-                        <p>${track.artists}</p>
-                    </div>
-                </div>
-            </td>
-            <td class="track-album-cell">${track.album}</td>
-            <td style="text-align: center;">
-                <button class="play-row-btn" title="Phát bài hát">
-                    <i data-lucide="play"></i>
-                </button>
-            </td>
-        `;
+         <td style="text-align: center; color: var(--text-secondary); font-weight: 500;">${index + 1}</td>
+         <td>
+             <div class="track-title-cell">
+                 <img src="${coverUrl}" alt="${track.title}" class="track-thumbnail">
+                 <div class="track-name-info">
+                     <h4>${track.title}</h4>
+                     <p>${track.artists}</p>
+                 </div>
+             </div>
+         </td>
+         <td class="track-album-cell">${track.album}</td>
+         <td style="text-align: center; display: flex; gap: 8px; justify-content: center; border-bottom: none;">
+             <button class="play-row-btn" title="Phát bài hát">
+                 <i data-lucide="play"></i>
+             </button>
+             <button class="delete-row-btn" title="Xóa bài hát" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.4rem; border-radius: 50%; transition: all 0.3s;">
+                 <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+             </button>
+         </td>
+     `;
         
         if (state.currentIndex !== -1 && state.currentPlaylist[state.currentIndex] && state.currentPlaylist[state.currentIndex].id === track.id) {
             const btn = row.querySelector('.play-row-btn');
@@ -512,7 +515,47 @@ export function renderLibraryTracks(tracks) {
         
         row.addEventListener('click', handlePlay);
         row.querySelector('.play-row-btn').addEventListener('click', handlePlay);
-        
+        // Bắt sự kiện click nút xóa
+     const deleteBtn = row.querySelector('.delete-row-btn');
+     if (deleteBtn) {
+         deleteBtn.addEventListener('click', async (e) => {
+             e.stopPropagation(); // Ngăn không cho click lan ra ngoài gây phát nhạc
+
+             const confirmDelete = confirm(`Bạn có chắc chắn muốn xóa bài hát "${track.title}" khỏi thư viện?`);
+             if (!confirmDelete) return;
+
+             // Đổi icon thành loading trong lúc xóa
+             deleteBtn.innerHTML = '<i data-lucide="loader" class="spin"></i>';
+             createIcons();
+
+             const res = await deleteLibraryTrack(track.id);
+             if (res.status === 'Success') {
+                 // Xóa thẻ tr (hàng) khỏi DOM
+                 row.remove();
+
+                 // Nếu xóa hết nhạc thì hiển thị lại giao diện trống
+                 if (container.children.length === 0) {
+                     container.innerHTML = `
+                         <tr>
+                             <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                                 <i data-lucide="folder-open" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5; display: inline-block;"></i>
+                                 <p>Thư viện cá nhân của bạn hiện chưa có bài hát nào đã tải.</p>
+                             </td>
+                         </tr>
+                     `;
+                     createIcons();
+                 }
+             } else {
+                 alert("Không thể xóa: " + res.message);
+                 deleteBtn.innerHTML = '<i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>';
+                 createIcons();
+             }
+         });
+     }
+
+     // Thêm hover effect cho nút Xóa (có thể viết thẳng trong code thay vì file CSS)
+     deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.color = '#ff5555');
+     deleteBtn.addEventListener('mouseleave', () => deleteBtn.style.color = 'var(--text-secondary)');
         container.appendChild(row);
     });
     createIcons();
