@@ -28,18 +28,35 @@ def get_base_dir():
         # Nếu đang chạy bằng code Python bình thường
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-BASE_DIR = get_base_dir()
+def get_resource_dir():
+    # Nhận diện thư mục chứa file tĩnh (frontend, icon) khi đóng gói hoặc chạy thường
+    if hasattr(sys, '_MEIPASS'):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# --- SỬA LẠI CÁC ĐƯỜNG DẪN DƯỚI ĐÂY ---
-FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
-DOWNLOAD_DIR = os.path.join(BASE_DIR, 'data', 'downloads')
-VECTOR_DB_DIR = os.path.join(BASE_DIR, 'data', 'vector_db') # Đảm bảo vector db cũng nằm ở đây
+def get_data_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+RESOURCE_DIR = get_resource_dir()
+DATA_DIR = get_data_dir()
+
+# Cấu hình các đường dẫn chuẩn hóa
+FRONTEND_DIR = os.path.join(RESOURCE_DIR, 'frontend')
+icon_path = os.path.join(RESOURCE_DIR, 'avatarapp.ico')
+
+DOWNLOAD_DIR = os.path.join(DATA_DIR, 'data', 'downloads')
+VECTOR_DB_DIR = os.path.join(DATA_DIR, 'data', 'vector_db')
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 os.makedirs(VECTOR_DB_DIR, exist_ok=True)
-icon_path = os.path.join(BASE_DIR, 'avatarapp.ico')
-app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
 
+# Gắn cấu hình để ứng dụng đọc được cả file giao diện lẫn thư mục lưu nhạc
+app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
+app.mount("/downloads", StaticFiles(directory=DOWNLOAD_DIR), name="downloads")
+# ============================
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 @app.get("/api/yt-suggest")
 def suggest_youtube_keywords(query: str = Query(...)):
     """Lấy danh sách gợi ý từ khóa tìm kiếm từ YouTube"""
