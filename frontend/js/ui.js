@@ -1,7 +1,7 @@
 import { state, getMiniEl } from './state.js';
 import { createIcons } from './utils.js';
 import { audioPlayer } from './player.js';
-import { fetchPlaylistTracks, deleteLibraryTrack } from './api.js';
+import { fetchPlaylistTracks, deleteLibraryTrack } from './api.js?v=1';
 
 export function renderPlaylists(playlists) {
     const container = document.getElementById('playlist-container');
@@ -516,42 +516,39 @@ export function renderLibraryTracks(tracks) {
         row.addEventListener('click', handlePlay);
         row.querySelector('.play-row-btn').addEventListener('click', handlePlay);
         // Bắt sự kiện click nút xóa
-     const deleteBtn = row.querySelector('.delete-row-btn');
-     if (deleteBtn) {
-         deleteBtn.addEventListener('click', async (e) => {
-             e.stopPropagation(); // Ngăn không cho click lan ra ngoài gây phát nhạc
+    const deleteBtn = row.querySelector('.delete-row-btn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation(); // Ngăn không cho click lan ra ngoài gây phát nhạc
 
-             const confirmDelete = confirm(`Bạn có chắc chắn muốn xóa bài hát "${track.title}" khỏi thư viện?`);
-             if (!confirmDelete) return;
+            const confirmDelete = confirm(`Bạn có chắc chắn muốn xóa bài hát "${track.title}" khỏi thư viện?`);
+            if (!confirmDelete) return;
+            deleteBtn.innerHTML = '<i data-lucide="loader" class="spin"></i>';
+            createIcons();
 
-             // Đổi icon thành loading trong lúc xóa
-             deleteBtn.innerHTML = '<i data-lucide="loader" class="spin"></i>';
-             createIcons();
+            const res = await deleteLibraryTrack(track.id);
+            
+            if (res.status === 'Success') {
+                if (state.currentIndex !== -1 && state.currentPlaylist[state.currentIndex] && state.currentPlaylist[state.currentIndex].id === track.id) {
+                    const audio = document.getElementById('main-audio');
+                    if (audio) {
+                        audio.pause();
+                        audio.src = ''; // Xóa nguồn để chống lỗi
+                    }
+                    document.getElementById('player-bar').style.display = 'none';
+                    state.currentIndex = -1; // Reset state
+                }
 
-             const res = await deleteLibraryTrack(track.id);
-             if (res.status === 'Success') {
-                 // Xóa thẻ tr (hàng) khỏi DOM
-                 row.remove();
-
-                 // Nếu xóa hết nhạc thì hiển thị lại giao diện trống
-                 if (container.children.length === 0) {
-                     container.innerHTML = `
-                         <tr>
-                             <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                                 <i data-lucide="folder-open" style="width: 48px; height: 48px; margin-bottom: 1rem; opacity: 0.5; display: inline-block;"></i>
-                                 <p>Thư viện cá nhân của bạn hiện chưa có bài hát nào đã tải.</p>
-                             </td>
-                         </tr>
-                     `;
-                     createIcons();
-                 }
-             } else {
-                 alert("Không thể xóa: " + res.message);
-                 deleteBtn.innerHTML = '<i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>';
-                 createIcons();
-             }
-         });
-     }
+                // FIX LỖI MẤT NÚT PLAY: Ép tải lại toàn bộ thư viện để làm mới mảng dữ liệu
+                import('./api.js?v=4.0').then(api => api.loadLibrary());
+                
+            } else {
+                alert("Không thể xóa: " + res.message);
+                deleteBtn.innerHTML = '<i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>';
+                createIcons();
+            }
+        });
+    }
 
      // Thêm hover effect cho nút Xóa (có thể viết thẳng trong code thay vì file CSS)
      deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.color = '#ff5555');

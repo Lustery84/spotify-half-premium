@@ -123,3 +123,16 @@ export async function loadLibrary() {
         container.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Lỗi khi kết nối lấy dữ liệu thư viện.</td></tr>';
     }
 }
+export async function deleteLibraryTrack(trackId) {
+    try {
+        // Gọi API DELETE tới backend
+        const response = await fetch(`/api/library/${trackId}`, { 
+            method: 'DELETE' 
+        });
+ 
+        return await response.json();
+    } catch (err) {
+        console.error("Lỗi xóa bài hát:", err);
+        return { status: 'Error', message: err.message };
+    }
+}

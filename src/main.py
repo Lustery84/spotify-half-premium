@@ -155,6 +155,32 @@ def get_library():
     except Exception as e:
         return {"status": "Error", "message": str(e)}
 
+@app.delete("/api/library/{track_id}")
+def delete_track(track_id: str):
+    """Xóa bài hát khỏi thư viện (Xóa file vật lý & Xóa khỏi ChromaDB)"""
+    try:
+        from ai.database import MusicVectorDB
+        import os # Đảm bảo đã import os ở đầu file main.py
+        
+        db = MusicVectorDB()
+        
+        # 1. Lấy thông tin bài hát từ DB trước để biết đường dẫn file vật lý
+        results = db.collection.get(ids=[track_id])
+        if results and 'metadatas' in results and len(results['metadatas']) > 0:
+            filepath = results['metadatas'][0].get("filepath")
+            
+            # Xóa file .mp3 vật lý nếu tồn tại
+            if filepath and os.path.exists(filepath):
+                os.remove(filepath)
+                
+        # 2. Xóa dữ liệu khỏi ChromaDB
+        db.delete_track(track_id)
+        
+        return {"status": "Success", "message": "Đã xóa bài hát"}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+
 @app.get("/api/yt-search")
 def search_youtube(query: str = Query(...)):
     """Tìm kiếm bài hát trực tiếp trên YouTube để tải xuống miễn phí"""

@@ -108,3 +108,13 @@ class MusicVectorDB:
         except Exception as e:
             print(f"[VectorDB ERROR] Không thể truy vấn thư viện: {e}")
             return []
+    
+    def delete_track(self, track_id):
+        """Xóa bài hát khỏi Vector Database"""
+        try:
+            self.collection.delete(ids=[track_id])
+            return True
+        except Exception as e:
+            print(f"[VectorDB ERROR] Lỗi xóa track {track_id}: {e}")
+            return False
+    
