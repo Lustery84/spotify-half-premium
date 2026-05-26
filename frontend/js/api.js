@@ -136,3 +136,78 @@ export async function deleteLibraryTrack(trackId) {
         return { status: 'Error', message: err.message };
     }
 }
+
+// Local Playlists APIs
+export async function getLocalPlaylists() {
+    try {
+        const res = await fetch('/api/local-playlists');
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("getLocalPlaylists Error:", err);
+        return { status: "Error", message: "API không phản hồi. Vui lòng tắt hoàn toàn ứng dụng và mở lại. " + err.message };
+    }
+}
+
+export async function createLocalPlaylist(name) {
+    try {
+        const res = await fetch('/api/local-playlists', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("createLocalPlaylist Error:", err);
+        return { status: "Error", message: "API không phản hồi. Vui lòng tắt hoàn toàn ứng dụng và mở lại. " + err.message };
+    }
+}
+
+export async function deleteLocalPlaylist(playlistId) {
+    try {
+        const res = await fetch(`/api/local-playlists/${playlistId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("deleteLocalPlaylist Error:", err);
+        return { status: "Error", message: "API không phản hồi. Vui lòng tắt hoàn toàn ứng dụng và mở lại. " + err.message };
+    }
+}
+
+export async function getLocalPlaylistDetails(playlistId) {
+    try {
+        const res = await fetch(`/api/local-playlists/${playlistId}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("getLocalPlaylistDetails Error:", err);
+        return { status: "Error", message: "API không phản hồi. Vui lòng tắt hoàn toàn ứng dụng và mở lại. " + err.message };
+    }
+}
+
+export async function addTrackToLocalPlaylist(playlistId, trackId) {
+    try {
+        const res = await fetch(`/api/local-playlists/${playlistId}/tracks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ track_id: trackId })
+        });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("addTrackToLocalPlaylist Error:", err);
+        return { status: "Error", message: "API không phản hồi. Vui lòng tắt hoàn toàn ứng dụng và mở lại. " + err.message };
+    }
+}
+
+export async function removeTrackFromLocalPlaylist(playlistId, trackId) {
+    try {
+        const res = await fetch(`/api/local-playlists/${playlistId}/tracks/${trackId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        console.error("removeTrackFromLocalPlaylist Error:", err);
+        return { status: "Error", message: "API không phản hồi. Vui lòng tắt hoàn toàn ứng dụng và mở lại. " + err.message };
+    }
+}

@@ -8,3 +8,7 @@ chromadb
 typer
 rich
 pytest
+pywebview
+pywebview[edgechromium]
+fastapi
+uvicorn

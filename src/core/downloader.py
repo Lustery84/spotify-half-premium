@@ -22,9 +22,12 @@ class YoutubeDownloader:
             self.download_dir = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), self.download_dir))
         os.makedirs(self.download_dir, exist_ok=True)
         
-    def download_track(self, track_name, artists, progress_callback=None):
+    def download_track(self, track_name, artists, youtube_url=None, progress_callback=None):
         """Tìm kiếm trên YouTube và tải bài hát dưới dạng MP3 320kbps"""
-        query = f"{track_name} - {artists} (Official Audio)"
+        if youtube_url:
+            query = youtube_url
+        else:
+            query = f"{track_name} - {artists} (Official Audio)"
         
         def ytdl_hook(d):
             if d['status'] == 'downloading':
@@ -73,9 +76,10 @@ class YoutubeDownloader:
             
             # Thực hiện đổi tên nếu file tồn tại
             if os.path.exists(original_mp3_path):
-                if os.path.exists(final_mp3_path):
-                    os.remove(final_mp3_path) # Ghi đè nếu đã tồn tại
-                os.rename(original_mp3_path, final_mp3_path)
+                if original_mp3_path != final_mp3_path:
+                    if os.path.exists(final_mp3_path):
+                        os.remove(final_mp3_path) # Ghi đè nếu đã tồn tại
+                    os.rename(original_mp3_path, final_mp3_path)
                 return final_mp3_path
             
             # Trường hợp file gốc được lưu bằng tên khác
@@ -86,9 +90,10 @@ class YoutubeDownloader:
                 # Chỉ đổi tên nếu nó được tạo trong vòng 30 giây qua
                 import time
                 if time.time() - os.path.getctime(newest_file) < 30:
-                    if os.path.exists(final_mp3_path):
-                        os.remove(final_mp3_path)
-                    os.rename(newest_file, final_mp3_path)
+                    if os.path.abspath(newest_file) != os.path.abspath(final_mp3_path):
+                        if os.path.exists(final_mp3_path):
+                            os.remove(final_mp3_path)
+                        os.rename(newest_file, final_mp3_path)
                     return final_mp3_path
             
             raise FileNotFoundError("Không tìm thấy file MP3 sau khi chuyển đổi bằng FFmpeg.")

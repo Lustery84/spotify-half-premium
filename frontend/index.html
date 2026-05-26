@@ -4,11 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SYR - AI Music Experience</title>
-    <link rel="stylesheet" href="/static/style.css?v=2.0">
+    <link rel="stylesheet" href="/static/style.css?v=3.0">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            alert("Lỗi JS: " + msg + "\nTại: " + lineNo + ":" + columnNo);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            alert("Lỗi Promise: " + (event.reason ? event.reason.message : 'Unknown'));
+        });
+    </script>
     <!-- Sidebar -->
     <nav class="sidebar">
         <div class="logo">
@@ -28,6 +37,10 @@
             <a href="#" class="nav-item" id="nav-library">
                 <i data-lucide="library"></i>
                 <span>Library</span>
+            </a>
+            <a href="#" class="nav-item" id="nav-local-playlists">
+                <i data-lucide="list-music"></i>
+                <span>My Playlists</span>
             </a>
             <a href="#" class="nav-item" id="nav-direct">
                 <i data-lucide="youtube"></i>
@@ -231,7 +244,85 @@
                 </table>
             </div>
         </section>
+
+        <!-- Trạng thái xem danh sách My Playlists -->
+        <section id="local-playlists-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 class="section-title">My Local Playlists</h2>
+                <button id="btn-create-local-playlist" style="padding: 0.6rem 1.2rem; border-radius: 8px; background: var(--accent-color); color: #000; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-family: inherit;">
+                    <i data-lucide="plus"></i> Create Playlist
+                </button>
+            </div>
+            <div class="playlist-grid" id="local-playlist-container">
+                <!-- Local Playlists sẽ được render ở đây -->
+            </div>
+        </section>
+
+        <!-- Trạng thái xem chi tiết 1 My Playlist -->
+        <section id="local-playlist-detail-section" style="display: none;">
+            <div class="tracks-header">
+                <button class="back-btn" id="btn-back-local-playlists">
+                    <i data-lucide="arrow-left"></i> Back to My Playlists
+                </button>
+                <div class="playlist-detail-card" style="background: linear-gradient(135deg, rgba(255, 136, 0, 0.1), rgba(234, 51, 147, 0.1));">
+                    <div class="detail-cover" style="display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid var(--glass-border); width: 190px; height: 190px;">
+                        <i data-lucide="list-music" style="width: 64px; height: 64px; color: var(--accent-color);"></i>
+                    </div>
+                    <div class="detail-info">
+                        <span class="tag" style="background: var(--accent-color); color: #000;">CUSTOM PLAYLIST</span>
+                        <h1 id="local-playlist-detail-title">Playlist Name</h1>
+                        <p id="local-playlist-detail-meta">0 Tracks</p>
+                        <button class="download-all-btn" id="btn-delete-local-playlist" style="background: rgba(255, 75, 75, 0.2); border-color: rgba(255, 75, 75, 0.5); color: #ff5555; margin-top: 1rem;">
+                            <i data-lucide="trash-2"></i> Delete Playlist
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tracks-list-container">
+                <table class="tracks-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">#</th>
+                            <th>Title</th>
+                            <th>Album</th>
+                            <th style="width: 100px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="local-playlist-tracks-container">
+                        <!-- Tracks của playlist sẽ được render ở đây -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
+
+    <!-- Modal chọn Playlist để thêm bài hát -->
+    <div id="add-to-playlist-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: 16px; padding: 2rem; width: 400px; max-width: 90vw; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">Add to Playlist</h3>
+                <button id="btn-close-modal" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer;"><i data-lucide="x"></i></button>
+            </div>
+            <div id="modal-playlist-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto;">
+                <!-- Danh sách playlist sẽ được render ở đây -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal tạo Playlist mới -->
+    <div id="create-playlist-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+        <div style="background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: 16px; padding: 2rem; width: 400px; max-width: 90vw; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">Create New Playlist</h3>
+                <button id="btn-close-create-modal" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer;"><i data-lucide="x"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                <input type="text" id="new-playlist-name-input" placeholder="Enter playlist name..." style="padding: 0.8rem 1rem; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box; outline: none;">
+                <button id="btn-submit-create-playlist" style="padding: 0.8rem; border-radius: 8px; background: var(--accent-color); color: #000; border: none; font-weight: bold; cursor: pointer;">Create</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Side Panel hiển thị tiến trình tải xuống (Download Panel) -->
     <div class="download-panel" id="download-panel">
@@ -301,7 +392,6 @@
         <button class="mini-btn" id="mini-prev" title="Previous"><i data-lucide="skip-back"></i></button>
         <button class="mini-btn" id="mini-play" title="Play/Pause"><i data-lucide="play"></i></button>
         <button class="mini-btn" id="mini-next" title="Next"><i data-lucide="skip-forward"></i></button>
-        <button class="mini-btn" id="mini-pip" title="Floating PiP"><i data-lucide="external-link"></i></button>
         <button class="mini-btn" id="mini-hide" title="Minimize"><i data-lucide="minus"></i></button>
         <button class="mini-btn" id="mini-close" title="Close"><i data-lucide="x"></i></button>
     </div>
@@ -318,10 +408,141 @@
 
 
     <!-- Tải tệp JS dưới dạng Module -->
-    <script type="module" src="/static/js/main.js?v=2.0"></script>
+    <script type="module" src="/static/js/main.js?v=3.0"></script>
     <script>
         if (window.lucide) {
             lucide.createIcons();
+        }
+    </script>
+    <script>
+        const isMiniWindow = new URLSearchParams(window.location.search).get('mini') === 'true';
+
+        if (isMiniWindow) {
+            // NẾU LÀ CỬA SỔ MINI (TRONG SUỐT)
+            document.documentElement.classList.add('mini-window-active');
+            document.body.classList.add('mini-window-active');
+            document.body.style.background = 'transparent';
+            document.querySelector('.sidebar').style.display = 'none';
+            document.querySelector('.main-content').style.display = 'none';
+            document.querySelector('.player-bar').style.display = 'none';
+            document.getElementById('mini-fab').style.display = 'none';
+            
+            const widget = document.getElementById('mini-widget-player');
+            widget.style.display = 'flex';
+            widget.style.position = 'fixed';
+            widget.style.inset = '0'; // Phủ kín toàn bộ cửa sổ 320x80
+            widget.classList.remove('mini-hiding');
+            
+            // Lắng nghe dữ liệu từ cửa sổ chính
+            const ipcRenderer = window.ipcRenderer; 
+            
+            if (ipcRenderer) {
+                ipcRenderer.on('update-mini-ui', (e, data) => {
+                    const miniCover = document.getElementById('mini-cover');
+                    const fabCover = document.getElementById('mini-fab-cover');
+                    miniCover.src = data.cover;
+                    if (fabCover) fabCover.src = data.cover;
+                    
+                    if (data.isPlaying) {
+                        miniCover.classList.add('playing');
+                        if (fabCover) fabCover.classList.add('playing');
+                    } else {
+                        miniCover.classList.remove('playing');
+                        if (fabCover) fabCover.classList.remove('playing');
+                    }
+                    document.getElementById('mini-title').textContent = data.title;
+                    document.getElementById('mini-artist').textContent = data.artist;
+                    document.getElementById('mini-play').innerHTML = data.isPlaying ? '<i data-lucide="pause"></i>' : '<i data-lucide="play"></i>';
+                    if(window.lucide) window.lucide.createIcons();
+                });
+
+                document.getElementById('mini-play').onclick = () => ipcRenderer.send('mini-action', 'play-pause');
+                document.getElementById('mini-prev').onclick = () => ipcRenderer.send('mini-action', 'prev');
+                document.getElementById('mini-next').onclick = () => ipcRenderer.send('mini-action', 'next');
+                document.getElementById('mini-close').onclick = () => ipcRenderer.send('toggle-mini', false);
+
+                const fab = document.getElementById('mini-fab');
+                let isDragging = false;
+                let hasMoved = false;
+                let startX, startY;
+
+                document.getElementById('mini-hide').onclick = (e) => {
+                    e.stopPropagation();
+                    
+                    widget.classList.add('mini-hiding');
+                    setTimeout(() => {
+                        widget.style.display = 'none';
+                        widget.classList.remove('mini-hiding');
+                        
+                        // Resize window while DOM is completely transparent to avoid 1/4 crop glitch
+                        ipcRenderer.send('resize-mini', true);
+                        
+                        setTimeout(() => {
+                            fab.style.top = '0';
+                            fab.style.left = '0';
+                            fab.style.right = 'auto';
+                            fab.style.bottom = 'auto';
+                            fab.style.margin = '0';
+                            fab.style.display = 'flex';
+                        }, 60); // Wait for DWM rebuild
+                    }, 260); // Wait for mini-hiding animation
+                };
+
+                fab.addEventListener('mousedown', (e) => {
+                    if (e.button === 0) {
+                        isDragging = true;
+                        hasMoved = false;
+                        startX = e.screenX;
+                        startY = e.screenY;
+                        fab.classList.add('dragging');
+                        e.preventDefault();
+                    }
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        const dx = e.screenX - startX;
+                        const dy = e.screenY - startY;
+                        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+                            hasMoved = true;
+                        }
+                        startX = e.screenX;
+                        startY = e.screenY;
+                        ipcRenderer.send('window-drag', { dx, dy });
+                    }
+                });
+
+                window.addEventListener('mouseup', () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        fab.classList.remove('dragging');
+                    }
+                });
+
+                fab.ondblclick = fab.onclick = (e) => {
+                    if (!hasMoved) {
+                        fab.style.display = 'none';
+                        ipcRenderer.send('resize-mini', false);
+                        
+                        setTimeout(() => {
+                            widget.style.display = 'flex';
+                        }, 60);
+                    }
+                    e.stopPropagation();
+                };
+            }
+        } else {
+            // NẾU LÀ CỬA SỔ CHÍNH
+            try {
+                const ipcRenderer = window.ipcRenderer; 
+                if (ipcRenderer) {
+                    ipcRenderer.on('trigger-main-action', (e, action) => {
+                        if (action === 'play-pause') document.getElementById('player-btn-play').click();
+                        if (action === 'prev') document.getElementById('player-btn-prev').click();
+                        if (action === 'next') document.getElementById('player-btn-next').click();
+                    });
+                }
+            } catch (err) {}
         }
     </script>
 </body>

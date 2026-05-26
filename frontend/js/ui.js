@@ -256,7 +256,10 @@ export function triggerSingleDownload(track) {
     queueList.appendChild(item);
     updateActiveQueueCount(1);
     
-    const downloadUrl = `/api/download?track_name=${encodeURIComponent(track.name)}&artists=${encodeURIComponent(track.artists)}&album=${encodeURIComponent(track.album)}&image=${encodeURIComponent(track.image || '')}`;
+    let downloadUrl = `/api/download?track_name=${encodeURIComponent(track.name)}&artists=${encodeURIComponent(track.artists)}&album=${encodeURIComponent(track.album)}&image=${encodeURIComponent(track.image || '')}`;
+    if (track.youtube_url) {
+        downloadUrl += `&youtube_url=${encodeURIComponent(track.youtube_url)}`;
+    }
     const eventSource = new EventSource(downloadUrl);
     
     eventSource.onmessage = function(event) {
@@ -434,7 +437,8 @@ export function renderYTResults(results) {
                 name: title,
                 artists: artist,
                 album: "YouTube Single",
-                image: item.thumbnail
+                image: item.thumbnail,
+                youtube_url: item.url
             };
             
             triggerSingleDownload(track);
@@ -489,6 +493,9 @@ export function renderLibraryTracks(tracks) {
          <td style="text-align: center; display: flex; gap: 8px; justify-content: center; border-bottom: none;">
              <button class="play-row-btn" title="Phát bài hát">
                  <i data-lucide="play"></i>
+             </button>
+             <button class="add-to-playlist-btn" title="Thêm vào Playlist" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.4rem; border-radius: 50%; transition: all 0.3s;">
+                 <i data-lucide="plus-circle" style="width: 18px; height: 18px;"></i>
              </button>
              <button class="delete-row-btn" title="Xóa bài hát" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.4rem; border-radius: 50%; transition: all 0.3s;">
                  <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
@@ -550,6 +557,16 @@ export function renderLibraryTracks(tracks) {
         });
     }
 
+         const addBtn = row.querySelector('.add-to-playlist-btn');
+         if (addBtn) {
+             addBtn.addEventListener('click', (e) => {
+                 e.stopPropagation();
+                 import('./main.js').then(m => m.openAddToPlaylistModal(track));
+             });
+             addBtn.addEventListener('mouseenter', () => addBtn.style.color = 'var(--accent-color)');
+             addBtn.addEventListener('mouseleave', () => addBtn.style.color = 'var(--text-secondary)');
+         }
+
      // Thêm hover effect cho nút Xóa (có thể viết thẳng trong code thay vì file CSS)
      deleteBtn.addEventListener('mouseenter', () => deleteBtn.style.color = '#ff5555');
      deleteBtn.addEventListener('mouseleave', () => deleteBtn.style.color = 'var(--text-secondary)');
@@ -596,5 +613,102 @@ export function updateVolumeIcon(volume) {
     }
     
     icon.setAttribute('data-lucide', iconName);
+    createIcons();
+}
+
+export function renderLocalPlaylists(playlists) {
+    const container = document.getElementById('local-playlist-container');
+    container.innerHTML = '';
+    
+    if (!playlists || playlists.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-secondary);">No custom playlists found. Create one!</div>';
+        return;
+    }
+    
+    playlists.forEach((playlist, index) => {
+        const card = document.createElement('div');
+        card.className = 'playlist-card';
+        card.style.animationDelay = `${index * 0.05}s`;
+        
+        card.innerHTML = `
+            <div class="card-img-wrapper">
+                <div style="width:100%; aspect-ratio:1; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.05); border-radius:8px;">
+                    <i data-lucide="list-music" style="width:48px; height:48px; color:var(--text-secondary);"></i>
+                </div>
+            </div>
+            <div class="card-info">
+                <h3>${playlist.name}</h3>
+                <p>${playlist.tracks ? playlist.tracks.length : 0} Tracks</p>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => {
+            if (typeof state !== 'undefined') state.lastActiveSection = 'local-playlists-section';
+            import('./main.js').then(m => m.viewLocalPlaylistDetail(playlist.id));
+        });
+        
+        container.appendChild(card);
+    });
+    createIcons();
+}
+
+export function renderLocalPlaylistTracks(playlist, tracks) {
+    const container = document.getElementById('local-playlist-tracks-container');
+    container.innerHTML = '';
+    
+    if (!tracks || tracks.length === 0) {
+        container.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No tracks found in this playlist.</td></tr>';
+        return;
+    }
+    
+    tracks.forEach((track, index) => {
+        const row = document.createElement('tr');
+        row.className = 'track-row';
+        row.dataset.trackId = track.id;
+        
+        const coverUrl = track.image || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=100&h=100&fit=crop';
+        
+        row.innerHTML = `
+            <td style="text-align: center; color: var(--text-secondary); font-weight: 500;">${index + 1}</td>
+            <td>
+                <div class="track-title-cell">
+                    <img src="${coverUrl}" alt="${track.title}" class="track-thumbnail">
+                    <div class="track-name-info">
+                        <h4>${track.title}</h4>
+                        <p>${track.artists}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="track-album-cell">${track.album}</td>
+            <td style="text-align: center; display: flex; gap: 8px; justify-content: center; border-bottom: none;">
+                <button class="play-row-btn" title="Phát bài hát">
+                    <i data-lucide="play"></i>
+                </button>
+                <button class="remove-from-playlist-btn" title="Xóa khỏi Playlist" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.4rem; border-radius: 50%; transition: all 0.3s;">
+                    <i data-lucide="x-circle" style="width: 18px; height: 18px;"></i>
+                </button>
+            </td>
+        `;
+        
+        const handlePlay = (e) => {
+            e.stopPropagation();
+            import('./player.js').then(p => p.audioPlayer.playTrack(track, tracks));
+        };
+        
+        row.addEventListener('click', handlePlay);
+        row.querySelector('.play-row-btn').addEventListener('click', handlePlay);
+        
+        const removeBtn = row.querySelector('.remove-from-playlist-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                import('./main.js').then(m => m.removeTrackFromPlaylistUI(playlist.id, track.id));
+            });
+            removeBtn.addEventListener('mouseenter', () => removeBtn.style.color = '#ff5555');
+            removeBtn.addEventListener('mouseleave', () => removeBtn.style.color = 'var(--text-secondary)');
+        }
+        
+        container.appendChild(row);
+    });
     createIcons();
 }

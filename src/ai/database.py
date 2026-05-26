@@ -85,6 +85,32 @@ class MusicVectorDB:
                 
         return formatted_results
 
+    def get_tracks_by_ids(self, track_ids):
+        """Lấy danh sách bài hát cụ thể dựa vào danh sách ID"""
+        if not track_ids:
+            return []
+        try:
+            results = self.collection.get(ids=track_ids)
+            formatted_results = []
+            if results and 'ids' in results and len(results['ids']) > 0:
+                for i in range(len(results['ids'])):
+                    metadata = results['metadatas'][i] if 'metadatas' in results else {}
+                    filepath = metadata.get("filepath", "")
+                    filename = os.path.basename(filepath) if filepath else ""
+                    formatted_results.append({
+                        "id": results['ids'][i],
+                        "title": metadata.get("title", ""),
+                        "artists": metadata.get("artists", ""),
+                        "album": metadata.get("album", ""),
+                        "filepath": filepath,
+                        "image": metadata.get("image", ""),
+                        "url": f"/downloads/{filename}" if filename else ""
+                    })
+            return formatted_results
+        except Exception as e:
+            print(f"[VectorDB ERROR] Không thể truy vấn tracks theo ids: {e}")
+            return []
+
     def get_all_tracks(self):
         """Lấy toàn bộ bài hát đã tải lưu trong ChromaDB"""
         try:

@@ -12,6 +12,7 @@ import ctypes
 import sys
 import unicodedata
 from fastapi import FastAPI, Query
+from pydantic import BaseModel
 from fastapi.responses import RedirectResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from core.spotify import SpotifyClient
@@ -181,6 +182,88 @@ def delete_track(track_id: str):
         return {"status": "Error", "message": str(e)}
 
 
+class PlaylistCreate(BaseModel):
+    name: str
+
+class TrackAdd(BaseModel):
+    track_id: str
+
+@app.get("/api/local-playlists")
+def get_local_playlists():
+    try:
+        from core.local_playlists import LocalPlaylistManager
+        manager = LocalPlaylistManager()
+        return {"status": "Success", "data": manager.get_all()}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+@app.get("/api/local-playlists/{playlist_id}")
+def get_local_playlist(playlist_id: str):
+    try:
+        from core.local_playlists import LocalPlaylistManager
+        from ai.database import MusicVectorDB
+        manager = LocalPlaylistManager()
+        playlist = manager.get(playlist_id)
+        if not playlist:
+            return {"status": "Error", "message": "Playlist not found"}
+            
+        db = MusicVectorDB()
+        tracks = db.get_tracks_by_ids(playlist["tracks"])
+        
+        tracks_dict = {t["id"]: t for t in tracks}
+        ordered_tracks = [tracks_dict[t_id] for t_id in playlist["tracks"] if t_id in tracks_dict]
+        
+        playlist["track_details"] = ordered_tracks
+        return {"status": "Success", "data": playlist}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+@app.post("/api/local-playlists")
+def create_local_playlist(data: PlaylistCreate):
+    try:
+        from core.local_playlists import LocalPlaylistManager
+        manager = LocalPlaylistManager()
+        playlist = manager.create(data.name)
+        return {"status": "Success", "data": playlist}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+@app.delete("/api/local-playlists/{playlist_id}")
+def delete_local_playlist(playlist_id: str):
+    try:
+        from core.local_playlists import LocalPlaylistManager
+        manager = LocalPlaylistManager()
+        success = manager.delete(playlist_id)
+        if success:
+            return {"status": "Success"}
+        return {"status": "Error", "message": "Playlist not found"}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+@app.post("/api/local-playlists/{playlist_id}/tracks")
+def add_track_to_playlist(playlist_id: str, data: TrackAdd):
+    try:
+        from core.local_playlists import LocalPlaylistManager
+        manager = LocalPlaylistManager()
+        success = manager.add_track(playlist_id, data.track_id)
+        if success:
+            return {"status": "Success"}
+        return {"status": "Error", "message": "Failed to add track"}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
+@app.delete("/api/local-playlists/{playlist_id}/tracks/{track_id}")
+def remove_track_from_playlist(playlist_id: str, track_id: str):
+    try:
+        from core.local_playlists import LocalPlaylistManager
+        manager = LocalPlaylistManager()
+        success = manager.remove_track(playlist_id, track_id)
+        if success:
+            return {"status": "Success"}
+        return {"status": "Error", "message": "Failed to remove track"}
+    except Exception as e:
+        return {"status": "Error", "message": str(e)}
+
 @app.get("/api/yt-search")
 def search_youtube(query: str = Query(...)):
     """Tìm kiếm bài hát trực tiếp trên YouTube để tải xuống miễn phí"""
@@ -193,7 +276,7 @@ def search_youtube(query: str = Query(...)):
         return {"status": "Error", "message": str(e)}
 
 @app.get("/api/download")
-def download_track(track_name: str = Query(...), artists: str = Query(...), album: str = Query(...), image: str = Query(None)):
+def download_track(track_name: str = Query(...), artists: str = Query(...), album: str = Query(...), image: str = Query(None), youtube_url: str = Query(None)):
     """Tải nhạc từ YouTube theo tên bài hát & nghệ sĩ, trả về tiến trình bằng Server-Sent Events (SSE)"""
     def event_generator():
         from core.downloader import YoutubeDownloader
@@ -208,7 +291,7 @@ def download_track(track_name: str = Query(...), artists: str = Query(...), albu
             try:
                 downloader = YoutubeDownloader()
                 # Tải bài hát
-                filepath = downloader.download_track(track_name, artists, progress_callback=progress_cb)
+                filepath = downloader.download_track(track_name, artists, youtube_url=youtube_url, progress_callback=progress_cb)
                 
                 # Ghi đè metadata thẻ tag & ảnh bìa album
                 q.put({"percent": 100, "status": "Writing metadata..."})
@@ -265,9 +348,9 @@ def download_track(track_name: str = Query(...), artists: str = Query(...), albu
 # Chạy server
 if __name__ == "__main__":
     
-    # --- PHÉP THUẬT 1: ÉP WINDOWS NHẬN DIỆN ĐÂY LÀ APP ĐỘC LẬP ---
-    if os.name == 'nt': # Kiểm tra nếu hệ điều hành là Windows
-        myappid = 'lustery.sonicrag.app.1.0' # Tạo một mã định danh độc quyền cho app của bạn
+
+    if os.name == 'nt': 
+        myappid = 'lustery.sonicrag.app.1.0' 
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     # -------------------------------------------------------------
 
@@ -280,13 +363,11 @@ if __name__ == "__main__":
     t.start()
     
     time.sleep(1.5)
-    
-    icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'avatarapp.ico'))
-    
-    # Tạo cửa sổ
-    webview.create_window('SonicRAG - AI Music', 'http://127.0.0.1:8000/app', width=1280, height=800)
 
-    if os.path.exists(icon_path):
-        webview.start(icon=icon_path)
-    else:
-        webview.start()
+    import subprocess
+    print("[INFO] Đang khởi động Giao diện Electron...")
+    try:
+        # Gọi lệnh npm để mở electron
+        subprocess.run("npx electron .", shell=True, check=True)
+    except Exception as e:
+        print(f"[ERROR] Lỗi mở Electron: {e}. Vui lòng kiểm tra xem đã chạy 'npm install' chưa.")

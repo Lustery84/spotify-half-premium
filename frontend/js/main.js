@@ -124,6 +124,10 @@ function setupMiniWidgetInteractivity() {
             document.removeEventListener('mouseup', onMouseUp);
             fab.classList.remove('dragging');
             
+            if (!state.isMuted) {
+                updateVolumeIcon(audioPlayer.audio.volume);
+            }
+            
             if (!state.isFabDragging) {
                 expandFab();
             }
@@ -158,16 +162,20 @@ function setupMiniWidgetInteractivity() {
         }
     });
 
-    miniHideBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (state.pipWindow) state.pipWindow.close();
-        minimizeWidget();
-    });
+    if (miniHideBtn) {
+        miniHideBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (state.pipWindow) state.pipWindow.close();
+            minimizeWidget();
+        });
+    }
 
-    miniPipBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        audioPlayer.toggleFloatingWidget();
-    });
+    if (miniPipBtn) {
+        miniPipBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            audioPlayer.toggleFloatingWidget();
+        });
+    }
 
     function expandFab() {
         fab.style.display = 'none';
@@ -341,6 +349,70 @@ document.addEventListener('click', (e) => {
         loadLibrary();
     });
     
+    document.getElementById('nav-local-playlists').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('playlists-section').style.display = 'none';
+        document.getElementById('tracks-section').style.display = 'none';
+        document.getElementById('search-section').style.display = 'none';
+        document.getElementById('direct-search-section').style.display = 'none';
+        document.getElementById('library-section').style.display = 'none';
+        document.getElementById('local-playlist-detail-section').style.display = 'none';
+        
+        const localSection = document.getElementById('local-playlists-section');
+        if (localSection) localSection.style.display = 'block';
+        
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        document.getElementById('nav-local-playlists').classList.add('active');
+        
+        loadLocalPlaylists();
+    });
+
+    const createModal = document.getElementById('create-playlist-modal');
+    const createInput = document.getElementById('new-playlist-name-input');
+    const createSubmit = document.getElementById('btn-submit-create-playlist');
+    const createCloseBtn = document.getElementById('btn-close-create-modal');
+
+    document.getElementById('btn-create-local-playlist').addEventListener('click', () => {
+        createInput.value = '';
+        createModal.style.display = 'flex';
+        createInput.focus();
+    });
+    
+    createCloseBtn.addEventListener('click', () => {
+        createModal.style.display = 'none';
+    });
+    
+    const submitCreatePlaylist = async () => {
+        const name = createInput.value.trim();
+        if (name) {
+            import('./api.js').then(async a => {
+                const res = await a.createLocalPlaylist(name);
+                if (res.status === 'Success') {
+                    createModal.style.display = 'none';
+                    loadLocalPlaylists();
+                    showToast("Tạo Playlist thành công!");
+                } else {
+                    showToast("Lỗi: " + res.message, true);
+                }
+            });
+        }
+    };
+    
+    createSubmit.addEventListener('click', submitCreatePlaylist);
+    createInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') submitCreatePlaylist();
+    });
+
+    document.getElementById('btn-back-local-playlists').addEventListener('click', () => {
+        document.getElementById('local-playlist-detail-section').style.display = 'none';
+        document.getElementById('local-playlists-section').style.display = 'block';
+    });
+
+    document.getElementById('btn-close-modal').addEventListener('click', () => {
+        document.getElementById('add-to-playlist-modal').style.display = 'none';
+    });
+
     document.getElementById('nav-downloads-menu').addEventListener('click', (e) => {
         e.preventDefault();
         toggleDownloadPanel(true);
@@ -507,3 +579,129 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+export async function loadLocalPlaylists() {
+    import('./api.js').then(async a => {
+        try {
+            const res = await a.getLocalPlaylists();
+            if (res.status === 'Success') {
+                import('./ui.js').then(u => u.renderLocalPlaylists(res.data));
+            } else {
+                showToast("Lỗi tải playlist: " + res.message, true);
+            }
+        } catch (err) {
+            showToast("Lỗi gọi API: " + err.message, true);
+        }
+    }).catch(err => showToast("Lỗi import api.js: " + err.message, true));
+}
+
+export function showToast(message, isError = false) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: ${isError ? '#ff5555' : 'var(--accent-color)'};
+        color: ${isError ? '#fff' : '#000'};
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        z-index: 10000;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    `;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    requestAnimationFrame(() => {
+        toast.style.transform = 'translateY(0)';
+        toast.style.opacity = '1';
+    });
+    
+    // Animate out
+    setTimeout(() => {
+        toast.style.transform = 'translateY(100px)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+export async function viewLocalPlaylistDetail(playlistId) {
+    document.getElementById('local-playlists-section').style.display = 'none';
+    document.getElementById('local-playlist-detail-section').style.display = 'block';
+    
+    document.getElementById('btn-delete-local-playlist').onclick = async () => {
+        if (confirm("Bạn có chắc chắn muốn xóa Playlist này?")) {
+            const api = await import('./api.js');
+            const res = await api.deleteLocalPlaylist(playlistId);
+            if (res.status === 'Success') {
+                document.getElementById('btn-back-local-playlists').click();
+                loadLocalPlaylists();
+            } else {
+                alert("Lỗi: " + res.message);
+            }
+        }
+    };
+    
+    import('./api.js').then(async a => {
+        const res = await a.getLocalPlaylistDetails(playlistId);
+        if (res.status === 'Success') {
+            const pl = res.data;
+            document.getElementById('local-playlist-detail-title').textContent = pl.name;
+            document.getElementById('local-playlist-detail-meta').textContent = `${pl.tracks.length} Tracks`;
+            import('./ui.js').then(u => u.renderLocalPlaylistTracks(pl, pl.track_details));
+        }
+    });
+}
+
+export async function removeTrackFromPlaylistUI(playlistId, trackId) {
+    const api = await import('./api.js');
+    const res = await api.removeTrackFromPlaylist(playlistId, trackId);
+    if (res.status === 'Success') {
+        viewLocalPlaylistDetail(playlistId); // reload
+        showToast("Đã xóa bài hát khỏi Playlist");
+    } else {
+        showToast("Lỗi: " + res.message, true);
+    }
+}
+
+export async function openAddToPlaylistModal(track) {
+    const modal = document.getElementById('add-to-playlist-modal');
+    const listContainer = document.getElementById('modal-playlist-list');
+    listContainer.innerHTML = '<div style="text-align: center; padding: 1rem;"><i data-lucide="loader" class="spin"></i></div>';
+    if (window.lucide) window.lucide.createIcons();
+    modal.style.display = 'flex';
+    
+    const api = await import('./api.js');
+    const res = await api.getLocalPlaylists();
+    listContainer.innerHTML = '';
+    
+    if (res.status === 'Success') {
+        const playlists = res.data;
+        if (playlists.length === 0) {
+            listContainer.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 1rem;">Chưa có Playlist nào. Hãy tạo một Playlist mới!</div>';
+        } else {
+            playlists.forEach(pl => {
+                const btn = document.createElement('button');
+                btn.style.cssText = 'padding: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; cursor: pointer; text-align: left; transition: all 0.2s; margin-bottom: 0.5rem;';
+                btn.textContent = pl.name;
+                btn.onmouseenter = () => btn.style.background = 'rgba(255,255,255,0.1)';
+                btn.onmouseleave = () => btn.style.background = 'rgba(255,255,255,0.05)';
+                btn.onclick = async () => {
+                    const addRes = await api.addTrackToLocalPlaylist(pl.id, track.id);
+                    if (addRes.status === 'Success') {
+                        modal.style.display = 'none';
+                        showToast(`Đã thêm vào ${pl.name}`);
+                    } else {
+                        showToast("Lỗi: " + addRes.message, true);
+                    }
+                };
+                listContainer.appendChild(btn);
+            });
+        }
+    }
+}
+

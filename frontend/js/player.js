@@ -1,6 +1,18 @@
 import { state, getMiniEl } from './state.js';
 import { formatTime, truncateText, createIcons } from './utils.js';
 
+function getIpc() {
+    if (typeof window !== 'undefined') {
+        if (window.ipcRenderer) return window.ipcRenderer;
+        if (window.require) {
+            try {
+                return window.require('electron').ipcRenderer;
+            } catch (e) {}
+        }
+    }
+    return null;
+}
+
 export function setupMediaSession(track, coverSrc, audioPlayerObj) {
     if (!('mediaSession' in navigator)) return;
     
@@ -79,8 +91,12 @@ export const audioPlayer = {
             setupMediaSession(track, coverSrc, this);
             this.autoOpenFloatingWidget();
         }).catch(err => {
-            console.error("Không thể phát nhạc:", err);
-            alert("Lỗi: Không thể phát tệp âm thanh này. Định dạng file có thể bị hỏng hoặc chưa hoàn thành tải.");
+            if (err.name === 'AbortError') {
+                console.log("Play interrupted by new request, ignoring.");
+                return;
+            }
+            console.error("Không thể phát nhạc:", err, "URL:", track.url);
+            import('./main.js').then(m => m.showToast("Không thể phát: " + (track.title || "File lỗi"), true));
         });
     },
 
@@ -115,15 +131,22 @@ export const audioPlayer = {
     },
 
     nextTrack: function() {
-        if (state.currentPlaylist.length === 0) return;
+        if (state.currentPlaylist.length <= 1) {
+            import('./main.js').then(m => m.showToast("Playlist chỉ có 1 bài hát, không thể chuyển.", true));
+            return;
+        }
         state.currentIndex = (state.currentIndex + 1) % state.currentPlaylist.length;
-        this.playTrack(state.currentPlaylist[state.currentIndex], state.currentPlaylist);
+        const track = state.currentPlaylist[state.currentIndex];
+        import('./main.js').then(m => m.showToast(`Chuyển đến: ${track.title || 'Unknown Track'}`));
+        this.playTrack(track, state.currentPlaylist);
     },
 
     prevTrack: function() {
-        if (state.currentPlaylist.length === 0) return;
+        if (state.currentPlaylist.length <= 1) return;
         state.currentIndex = (state.currentIndex - 1 + state.currentPlaylist.length) % state.currentPlaylist.length;
-        this.playTrack(state.currentPlaylist[state.currentIndex], state.currentPlaylist);
+        const track = state.currentPlaylist[state.currentIndex];
+        import('./main.js').then(m => m.showToast(`Chuyển đến: ${track.title || 'Unknown Track'}`));
+        this.playTrack(track, state.currentPlaylist);
     },
 
     closePlayer: function() {
@@ -166,6 +189,11 @@ export const audioPlayer = {
     },
 
     hideMiniWidget: function() {
+        try {
+            const ipc = getIpc();
+            if (ipc) ipc.send('toggle-mini', false);
+        } catch (e) {}
+
         const widget = getMiniEl('mini-widget-player');
         if (!widget) return;
         widget.classList.add('mini-hiding');
@@ -179,6 +207,7 @@ export const audioPlayer = {
         const audio = document.getElementById('main-audio');
         const miniPlay = getMiniEl('mini-play');
         if (!miniPlay || !audio) return;
+        
         miniPlay.innerHTML = audio.paused
             ? '<i data-lucide="play"></i>'
             : '<i data-lucide="pause"></i>';
@@ -187,6 +216,22 @@ export const audioPlayer = {
             state.pipWindow.lucide.createIcons();
         } else {
             createIcons();
+        }
+        
+        // Cập nhật giao diện Mini qua IPC
+        try {
+            const ipc = getIpc();
+            const track = state.currentPlaylist[state.currentIndex];
+            if (ipc && track) {
+                ipc.send('sync-mini-data', {
+                    title: track.title || track.name || 'Unknown',
+                    artist: track.artists || 'Unknown',
+                    cover: document.getElementById('player-cover').src,
+                    isPlaying: !audio.paused
+                });
+            }
+        } catch (e) {
+            // Im lặng bỏ qua nếu không có IPC
         }
     },
 
@@ -202,14 +247,17 @@ export const audioPlayer = {
     },
 
     toggleFloatingWidget: async function() {
-        if (state.pipWindow) {
-            state.pipWindow.close();
-            return;
-        }
-        if (window.documentPictureInPicture) {
-            await this.enterDocumentPiP();
-        } else {
-            await this.enterCanvasPiP();
+        try {
+            const ipc = getIpc();
+            if (ipc) {
+                ipc.send('toggle-mini', true);
+                this.syncMiniWidget();
+            } else {
+                import('./main.js').then(m => m.showToast("Tính năng Floating Widget chỉ hỗ trợ trên App (Electron).", true));
+            }
+        } catch (e) {
+            console.error(e);
+            import('./main.js').then(m => m.showToast("Lỗi Floating Widget: " + e.message, true));
         }
     },
 
